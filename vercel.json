@@ -13,33 +13,22 @@
             "src": "Frontend/package.json",
             "use": "@vercel/static-build",
             "config": {
-                "distDir": "dist"
+                "distDir": "Frontend/dist"
             }
         }
     ],
     "routes": [
         {
-            "src": "/api/predict",
-            "dest": "Backend/app.js"
-        },
-        {
-            "src": "/api",
-            "dest": "Backend/app.js"
-        },
-        {
             "src": "/api/ai/(.*)",
             "dest": "ai/app.py"
         },
         {
-            "src": "/assets/(.*)",
-            "headers": {
-                "cache-control": "s-maxage=31536000, immutable"
-            },
-            "dest": "/assets/$1"
+            "src": "/api/predict",
+            "dest": "Backend/app.js"
         },
         {
             "src": "/(.*)",
-            "dest": "/index.html"
+            "dest": "Frontend/index.html"
         }
     ]
 }
