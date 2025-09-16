@@ -6,7 +6,6 @@ import multer from 'multer';
 import axios from 'axios';
 import FormData from 'form-data';
 
-
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
@@ -23,30 +22,40 @@ app.get('/api', (req, res) => {
 });
 
 const handlePredict = async (req, res) => {
-    log("Received a request on /api/predict");
-
+    log("=== Received prediction request ===");
+    
     if (!req.file) {
+        log("ERROR: No file uploaded");
         return res.status(400).json({ error: 'No file uploaded.' });
     }
 
+    log("File info:", {
+        name: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+    });
+
     try {
+        // Create FormData with the uploaded file
         const formData = new FormData();
-        formData.append("file", selectedFile);
-        await fetch("/api/predict", {
-        method: "POST",
-        body: formData,
+        formData.append('file', req.file.buffer, {
+            filename: req.file.originalname,
+            contentType: req.file.mimetype
         });
 
-
-        log("Error calling Python service:", error.response ? error.response.data : error.message);
-
-
+        // Construct Python API URL based on your vercel.json routing
         const isProd = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
-        const pythonBaseUrl = process.env.PYTHON_API_URL || 'http://127.0.0.1:5000';
-        const forwardedProto = req.headers['x-forwarded-proto'] || 'https';
-        const forwardedHost = req.headers['x-forwarded-host'] || req.headers['host'];
-        const absolutePythonUrl = `${forwardedProto}://${forwardedHost}/api/ai/predict`;
-        const pythonApiUrl = isProd ? absolutePythonUrl : `${pythonBaseUrl}/api/ai/predict`;        
+        let pythonApiUrl;
+        
+        if (isProd) {
+            // In production, both services are on the same Vercel domain
+            const protocol = req.headers['x-forwarded-proto'] || 'https';
+            const host = req.headers['x-forwarded-host'] || req.headers['host'];
+            pythonApiUrl = `${protocol}://${host}/api/ai/predict`;
+        } else {
+            // Local development - you'll need to run the Python server separately
+            pythonApiUrl = 'http://127.0.0.1:5000/api/ai/predict';
+        }
         
         log("Calling Python AI service at:", pythonApiUrl);
 
@@ -54,24 +63,40 @@ const handlePredict = async (req, res) => {
             headers: {
                 ...formData.getHeaders()
             },
-            maxBodyLength: Infinity
+            maxBodyLength: Infinity,
+            timeout: 30000
         });
 
-        log("Received response from Python service:", response.data);
-
+        log("SUCCESS - Received response from Python service:", response.data);
         res.status(200).json(response.data);
 
     } catch (error) {
-        log("Error calling Python service:", error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Failed to get prediction from AI service.' });
+        log("=== ERROR calling Python service ===");
+        if (error.response) {
+            log("Response error:", {
+                status: error.response.status,
+                statusText: error.response.statusText,
+                data: error.response.data,
+                url: error.config?.url
+            });
+        } else if (error.request) {
+            log("Request error (no response):", error.message);
+        } else {
+            log("Setup error:", error.message);
+        }
+        
+        res.status(500).json({ 
+            error: 'Failed to get prediction from AI service.',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
 
+// Route matches your vercel.json: /api/predict goes to Backend/app.js
 app.post('/api/predict', upload.single('file'), handlePredict);
-app.post('/', upload.single('file'), handlePredict);
 
 app.listen(port, () => {
-    log(`Node.js Server is running for local testing: http://localhost:${port}`);
+    log(`Backend server running on port ${port}`);
 });
 
 export default app;
