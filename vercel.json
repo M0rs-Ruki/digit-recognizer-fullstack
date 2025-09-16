@@ -26,9 +26,10 @@
             "src": "/api/predict",
             "dest": "Backend/app.js"
         },
+        { "handle": "filesystem" },
         {
             "src": "/(.*)",
-            "dest": "Frontend/index.html"
+            "dest": "/index.html"
         }
     ]
 }
