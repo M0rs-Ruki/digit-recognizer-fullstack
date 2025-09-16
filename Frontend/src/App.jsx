@@ -25,8 +25,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const { register, handleSubmit, reset, watch } = useForm();
-  const uploadedImage = watch("digitImage");
+  const { register, handleSubmit, reset } = useForm();
 
   const handleImageChange = (event) => {
     const file = event.target.files[0];
@@ -44,7 +43,6 @@ function App() {
     }
   };
 
-  // --- THIS IS THE UPDATED SECTION ---
   const onSubmit = async (data) => {
     if (!data.digitImage || data.digitImage.length === 0) {
       setError('Please select an image first.');
@@ -55,20 +53,24 @@ function App() {
     setPrediction(null);
     setError(null);
 
-    // Create a FormData object to send the file to the backend
     const formData = new FormData();
-    // The key 'file' must match what your Node.js backend expects: upload.single('file')
     formData.append('file', data.digitImage[0]);
 
     try {
-      // Send the image to YOUR NODE.JS server (which runs on port 3000)
-      const response = await fetch('http://localhost:3000/predict', {
+      // --- LOCAL DEVELOPMENT: Use full URL to backend ---
+      // For local development, your backend runs on port 3000
+      // For Vercel deployment, this should be '/api/predict'
+      const backendUrl = process.env.NODE_ENV === 'production' ? '/api/predict' : 'http://localhost:3000/api/predict';
+      const response = await fetch(backendUrl, {
         method: 'POST',
-        body: formData, // No headers needed, browser sets it for FormData
+        body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Server error. Make sure the backend services are running.');
+        // Try to get a more specific error from the server response
+        const errData = await response.json().catch(() => ({})); // Gracefully handle non-JSON responses
+        const errorMessage = errData.error || 'Server error. Please try again later.';
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -76,15 +78,13 @@ function App() {
       if (result.error) {
         setError(result.error);
       } else {
-        // The Python server sends back { "prediction": 7 }, so we access it here
         setPrediction(result.prediction);
       }
 
     } catch (error) {
       console.error('Error during prediction:', error);
-      setError('Failed to get prediction. Check the console and ensure all servers are running.');
+      setError(error.message || 'Failed to get prediction. Check the console.');
     } finally {
-      // This will run whether the request succeeds or fails
       setIsLoading(false);
     }
   };
@@ -96,7 +96,6 @@ function App() {
     setError(null);
     setIsLoading(false);
   };
-  
 
   return (
     <div className="bg-lime-200 min-h-screen flex items-center justify-center font-sans p-4">
@@ -156,7 +155,7 @@ function App() {
                   >
                     {isLoading ? 'Recognizing...' : 'Recognize Digit'}
                   </button>
-                   <button 
+                    <button 
                       type="button" 
                       onClick={handleReset}
                       className="p-3 bg-red-500 border-2 border-black rounded-md transition-all hover:shadow-[4px_4px_0px_#000000] hover:bg-red-400 active:shadow-[1px_1px_0px_#000000]"
@@ -208,4 +207,3 @@ function App() {
 }
 
 export default App;
-

@@ -1,4 +1,3 @@
-// app.js
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -7,11 +6,11 @@ import multer from 'multer';
 import axios from 'axios';
 import FormData from 'form-data';
 
-dotenv.config('./.env');
+// Vercel doesn't use .env files in the same way. We use Environment Variables in the project settings.
+dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Multer setup for handling file uploads in memory
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -19,28 +18,33 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/', (req, res) => {
-    res.send('Hello, World! This is the Node.js MERN Backend.');
+// This route can be removed for Vercel, but it's harmless to keep for testing.
+app.get('/api', (req, res) => {
+    res.send('Hello from the Node.js proxy server.');
 });
 
-// The new route to handle prediction requests
-app.post('/predict', upload.single('file'), async (req, res) => {
-    log("Received a request on /predict");
+// The Vercel route will be /api/predict as defined in vercel.json
+app.post('/api/predict', upload.single('file'), async (req, res) => {
+    log("Received a request on /api/predict");
 
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded.' });
     }
 
     try {
-        // Create a FormData object to send to the Python server
         const formData = new FormData();
-        // Append the file buffer from the uploaded file
         formData.append('file', req.file.buffer, { filename: req.file.originalname });
 
         log("Forwarding request to Python AI service...");
 
-        // Make a POST request to the Python/Flask server
-        const pythonApiUrl = 'http://127.0.0.1:5000/predict';
+        // FIX 1: Use Environment Variable for the Python API URL
+        // For local development, fallback to localhost:5000
+        // For Vercel, this will be set in your project settings.
+        const pythonBaseUrl = process.env.PYTHON_API_URL || 'http://127.0.0.1:5000';
+        const pythonApiUrl = `${pythonBaseUrl}/api/ai/predict`;
+        
+        log("Calling Python AI service at:", pythonApiUrl);
+
         const response = await axios.post(pythonApiUrl, formData, {
             headers: {
                 ...formData.getHeaders()
@@ -49,18 +53,22 @@ app.post('/predict', upload.single('file'), async (req, res) => {
 
         log("Received response from Python service:", response.data);
 
-        // Extract the predicted_digit value from the Python service response
-        const predictionData = { prediction: response.data.predicted_digit };
-
-        // Send the prediction from the Python server back to the client
-        res.status(200).json(predictionData);
+        // FIX 2: Pass the Python response directly through.
+        // The Python API now correctly returns {'prediction': 7},
+        // which is exactly what the frontend needs. No need to modify it.
+        res.status(200).json(response.data);
 
     } catch (error) {
-        log("Error calling Python service:", error.message);
+        log("Error calling Python service:", error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Failed to get prediction from AI service.' });
     }
 });
 
+// VERCEL NOTE: Vercel ignores this 'app.listen' block. It handles starting
+// the server itself. This is only for running locally.
 app.listen(port, () => {
-    log(`Node.js Server is running: http://localhost:${port}`);
+    log(`Node.js Server is running for local testing: http://localhost:${port}`);
 });
+
+// Vercel needs this export to wrap the app in a serverless function
+export default app;

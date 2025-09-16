@@ -1,4 +1,4 @@
-# app.py
+
 from flask import Flask, request, jsonify
 from PIL import Image
 import numpy as np
@@ -7,9 +7,15 @@ import io
 # Import our prediction function from the other file
 from prediction import make_prediction
 
+# This 'app' variable is what Vercel looks for
 app = Flask(__name__)
 
-@app.route('/predict', methods=['POST'])
+# A simple "health check" route to verify the API is running
+@app.route('/api/ai')
+def health_check():
+    return "Python AI server is alive."
+
+@app.route('/api/ai/predict', methods=['POST'])
 def predict():
     # Ensure a file was sent
     if 'file' not in request.files:
@@ -32,7 +38,7 @@ def predict():
         # 3. Convert to a numpy array
         image_array = np.array(image)
 
-        # 4. Invert colors (your model was trained on white digits on a black background)
+        # 4. Invert colors (CRITICAL: MNIST is white-on-black, users draw black-on-white)
         image_array = 255.0 - image_array
 
         # 5. Normalize the pixel values to be between 0 and 1
@@ -44,12 +50,13 @@ def predict():
         # Make the prediction using the function from prediction.py
         prediction = make_prediction(image_vector)
 
-        # Return the result as a JSON object
-        return jsonify({'predicted_digit': int(prediction)})
+        # --- BUG FIX ---
+        # The key MUST be 'prediction' to match your React frontend code
+        return jsonify({'prediction': int(prediction)})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    print("Starting Flask server on http://127.0.0.1:5000")
-    app.run(debug=True, port=5000)
+# if __name__ == '__main__':
+#     print("Starting Flask server on http://127.0.0.1:5000")
+#     app.run(debug=True, port=5000)
