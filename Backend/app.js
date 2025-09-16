@@ -42,7 +42,11 @@ const handlePredict = async (req, res) => {
         // - Local dev: use env PYTHON_API_URL or fallback to localhost
         const isProd = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
         const pythonBaseUrl = process.env.PYTHON_API_URL || 'http://127.0.0.1:5000';
-        const pythonApiUrl = isProd ? '/api/ai/predict' : `${pythonBaseUrl}/api/ai/predict`;
+        // In Vercel serverless, axios needs an absolute URL. Build it from request headers.
+        const forwardedProto = req.headers['x-forwarded-proto'] || 'https';
+        const forwardedHost = req.headers['x-forwarded-host'] || req.headers['host'];
+        const absolutePythonUrl = `${forwardedProto}://${forwardedHost}/api/ai/predict`;
+        const pythonApiUrl = isProd ? absolutePythonUrl : `${pythonBaseUrl}/api/ai/predict`;
         
         log("Calling Python AI service at:", pythonApiUrl);
 
