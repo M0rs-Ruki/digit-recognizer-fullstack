@@ -10,10 +10,10 @@
             "use": "@vercel/python"
         },
         {
-            "src": "package.json",
+            "src": "Frontend/package.json",
             "use": "@vercel/static-build",
             "config": {
-                "distDir": "Frontend/dist"
+                "distDir": "dist"
             }
         }
     ],
@@ -27,8 +27,15 @@
             "dest": "ai/app.py"
         },
         {
+            "src": "/assets/(.*)",
+            "headers": {
+                "cache-control": "s-maxage=31536000, immutable"
+            },
+            "dest": "/assets/$1"
+        },
+        {
             "src": "/(.*)",
-            "dest": "/"
+            "dest": "/index.html"
         }
     ]
 }
