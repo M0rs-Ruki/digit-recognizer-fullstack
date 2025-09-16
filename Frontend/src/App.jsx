@@ -1,3 +1,4 @@
+// Frontend/src/App.jsx
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -57,31 +58,33 @@ function App() {
     formData.append('file', data.digitImage[0]);
 
     try {
-
       const backendUrl = process.env.NODE_ENV === 'production'
         ? '/api/predict'
         : 'http://localhost:3000/api/predict';
+      
       const response = await fetch(backendUrl, {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) {
-        // Try to get a more specific error from the server response
-        const errData = await response.json().catch(() => ({})); // Gracefully handle non-JSON responses
-        const errorMessage = errData.error || 'Server error. Please try again later.';
-        throw new Error(errorMessage);
-      }
-
       const result = await response.json();
-      console.log('Full API response:', result);
-      console.log('Prediction value:', result.prediction);
-      console.log('Prediction type:', typeof result.prediction);
+
+      // --- NEW DEBUGGING LINE ---
+      console.log('API Response Received:', result);
+
+      if (!response.ok) {
+        // Use the error message from the JSON response if available
+        throw new Error(result.error || 'Server error. Please try again later.');
+      }
       
       if (result.error) {
         setError(result.error);
-      } else {
+      } else if (result.prediction !== undefined) {
         setPrediction(result.prediction);
+      } else {
+        // This handles cases where the API call succeeded but the data is wrong
+        setError('Received an invalid response from the AI service.');
+        console.error("The API response object is missing the 'prediction' key.", result);
       }
 
     } catch (error) {
@@ -152,9 +155,9 @@ function App() {
                     type="submit"
                     disabled={isLoading || !imagePreview}
                     className="w-full font-bold text-lg text-black bg-yellow-400 border-2 border-black rounded-md px-6 py-3 transition-all
-                                  hover:shadow-[4px_4px_0px_#000000] hover:bg-yellow-300
-                                  active:shadow-[1px_1px_0px_#000000]
-                                  disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
+                                hover:shadow-[4px_4px_0px_#000000] hover:bg-yellow-300
+                                active:shadow-[1px_1px_0px_#000000]
+                                disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
                   >
                     {isLoading ? 'Recognizing...' : 'Recognize Digit'}
                   </button>
@@ -201,7 +204,7 @@ function App() {
 
         {/* Footer */}
         <p className="text-center text-sm text-black mt-6">
-            Powered by AI & <span className="font-bold">Neobrutalism</span>
+          Powered by AI & <span className="font-bold">Neobrutalism</span>
         </p>
 
       </div>
