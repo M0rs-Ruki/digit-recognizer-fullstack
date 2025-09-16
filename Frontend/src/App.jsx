@@ -57,9 +57,7 @@ function App() {
     formData.append('file', data.digitImage[0]);
 
     try {
-      // Choose API endpoint based on environment
-      // - Production (Vercel): use serverless route '/api/predict'
-      // - Local development: call Node backend at http://localhost:3000/api/predict
+
       const backendUrl = process.env.NODE_ENV === 'production'
         ? '/api/predict'
         : 'http://localhost:3000/api/predict';
@@ -76,7 +74,10 @@ function App() {
       }
 
       const result = await response.json();
-
+      console.log('Full API response:', result);
+      console.log('Prediction value:', result.prediction);
+      console.log('Prediction type:', typeof result.prediction);
+      
       if (result.error) {
         setError(result.error);
       } else {
