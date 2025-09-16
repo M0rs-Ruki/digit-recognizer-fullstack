@@ -29,8 +29,16 @@
         },
         { "handle": "filesystem" },
         {
+            "src": "/assets/(.*)",
+            "dest": "/Frontend/assets/$1"
+        },
+        {
+            "src": "/vite.svg",
+            "dest": "/Frontend/vite.svg"
+        },
+        {
             "src": "/(.*)",
-            "dest": "index.html"
+            "dest": "/Frontend/index.html"
         }
     ]
 }
