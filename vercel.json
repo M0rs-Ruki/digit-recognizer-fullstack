@@ -6,10 +6,10 @@
             "use": "@vercel/node"
         },
         {
-            "src": "ai/app.py",
+            "src": "AI/app.py",
             "use": "@vercel/python",
             "config": {
-                "runtime": "python3.9"
+                "maxLambdaSize": "50mb"
             }
         },
         {
@@ -24,10 +24,10 @@
     "routes": [
         {
             "src": "/api/ai/(.*)",
-            "dest": "ai/app.py"
+            "dest": "AI/app.py"
         },
         {
-            "src": "/api/predict",
+            "src": "/api/(.*)",
             "dest": "Backend/app.js"
         },
         { "handle": "filesystem" },

@@ -11,88 +11,126 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({ 
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
 
-app.use(cors());
+app.use(cors({
+    origin: true,
+    credentials: false
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/api', (req, res) => {
-    res.send('Hello from the Node.js proxy server.');
+    res.json({ 
+        message: 'Node.js proxy server is running',
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.get('/api/health', async (req, res) => {
+    try {
+        // Test connection to Python service
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers['host'];
+        const pythonUrl = `${protocol}://${host}/api/ai`;
+        
+        const response = await axios.get(pythonUrl, { timeout: 10000 });
+        res.json({
+            nodejs: 'OK',
+            python: response.data,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            nodejs: 'OK',
+            python: 'ERROR: ' + error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
 });
 
 const handlePredict = async (req, res) => {
-    log("=== Received prediction request ===");
+    const startTime = Date.now();
+    log("=== Prediction Request Started ===");
     
     if (!req.file) {
         log("ERROR: No file uploaded");
         return res.status(400).json({ error: 'No file uploaded.' });
     }
 
-    log("File info:", {
+    log("File details:", {
         name: req.file.originalname,
         size: req.file.size,
         mimetype: req.file.mimetype
     });
 
     try {
-        // Create FormData with the uploaded file
+        // Create FormData properly
         const formData = new FormData();
         formData.append('file', req.file.buffer, {
             filename: req.file.originalname,
-            contentType: req.file.mimetype
+            contentType: req.file.mimetype || 'image/png'
         });
 
-        // Construct Python API URL based on your vercel.json routing
-        const isProd = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
-        let pythonApiUrl;
-        
-        if (isProd) {
-            // In production, both services are on the same Vercel domain
-            const protocol = req.headers['x-forwarded-proto'] || 'https';
-            const host = req.headers['x-forwarded-host'] || req.headers['host'];
-            pythonApiUrl = `${protocol}://${host}/api/ai/predict`;
-        } else {
-            // Local development - you'll need to run the Python server separately
-            pythonApiUrl = 'http://127.0.0.1:5000/api/ai/predict';
-        }
+        // Construct Python API URL
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers['host'];
+        const pythonApiUrl = `${protocol}://${host}/api/ai/predict`;
         
         log("Calling Python AI service at:", pythonApiUrl);
 
         const response = await axios.post(pythonApiUrl, formData, {
             headers: {
-                ...formData.getHeaders()
+                ...formData.getHeaders(),
+                'User-Agent': 'Node.js-Proxy'
             },
             maxBodyLength: Infinity,
-            timeout: 30000
+            timeout: 30000,
+            validateStatus: (status) => status < 500 // Don't throw on 4xx errors
         });
 
-        log("SUCCESS - Received response from Python service:", response.data);
+        const duration = Date.now() - startTime;
+        log(`SUCCESS: Prediction completed in ${duration}ms`);
+        log("Response:", response.data);
+
         res.status(200).json(response.data);
 
     } catch (error) {
-        log("=== ERROR calling Python service ===");
+        const duration = Date.now() - startTime;
+        log(`ERROR: Request failed after ${duration}ms`);
+        
         if (error.response) {
             log("Response error:", {
                 status: error.response.status,
                 statusText: error.response.statusText,
                 data: error.response.data,
-                url: error.config?.url
+                headers: error.response.headers
+            });
+            res.status(error.response.status).json({
+                error: 'Python service error',
+                details: error.response.data
             });
         } else if (error.request) {
-            log("Request error (no response):", error.message);
+            log("Network error - no response received:", error.message);
+            res.status(503).json({ 
+                error: 'Cannot reach AI service',
+                details: error.message
+            });
         } else {
-            log("Setup error:", error.message);
+            log("Request setup error:", error.message);
+            res.status(500).json({ 
+                error: 'Request configuration error',
+                details: error.message
+            });
         }
-        
-        res.status(500).json({ 
-            error: 'Failed to get prediction from AI service.',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
     }
 };
 
-// Route matches your vercel.json: /api/predict goes to Backend/app.js
 app.post('/api/predict', upload.single('file'), handlePredict);
 
 app.listen(port, () => {

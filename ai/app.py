@@ -4,60 +4,76 @@ from PIL import Image
 import numpy as np
 import io
 import traceback
+import os
+import sys
 
-# Import our prediction function
-from prediction import make_prediction
+# Add the current directory to Python path for imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Import prediction function
+try:
+    from prediction import make_prediction
+    print("✓ Successfully imported make_prediction")
+except ImportError as e:
+    print(f"✗ Failed to import make_prediction: {e}")
+    sys.exit(1)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS
+CORS(app)
 
 @app.route('/api/ai')
 def health_check():
-    return jsonify({"status": "Python AI server is alive", "service": "digit-recognition"})
+    return jsonify({
+        "status": "Python AI server is alive", 
+        "service": "digit-recognition",
+        "python_version": sys.version
+    })
 
 @app.route('/api/ai/predict', methods=['POST'])
 def predict():
-    print("=== AI Prediction Request ===")
+    print("=== AI Prediction Request Started ===")
     
     if 'file' not in request.files:
         print("ERROR: No file in request")
         return jsonify({'error': 'no file provided'}), 400
 
     file = request.files['file']
-    print(f"File: {file.filename}, Type: {file.content_type}")
+    print(f"File received: {file.filename}, Content-Type: {file.content_type}")
 
     try:
         image_bytes = file.read()
-        print(f"Image bytes: {len(image_bytes)}")
+        print(f"Image bytes length: {len(image_bytes)}")
         
         if len(image_bytes) == 0:
+            print("ERROR: Empty file received")
             return jsonify({'error': 'empty file received'}), 400
             
+        # Process image
         image = Image.open(io.BytesIO(image_bytes))
-        print(f"Image loaded: {image.size}, {image.mode}")
+        print(f"Image opened: size={image.size}, mode={image.mode}")
 
-        # Preprocess for MNIST model
-        image = image.convert('L')          # Grayscale
-        image = image.resize((28, 28))      # 28x28 pixels
-        image_array = np.array(image)       # Convert to numpy
-        image_array = 255.0 - image_array  # Invert colors
-        image_array = image_array / 255.0   # Normalize
-        image_vector = image_array.reshape(784, 1)  # Flatten
+        # Preprocess for MNIST
+        image = image.convert('L')
+        image = image.resize((28, 28))
+        image_array = np.array(image)
+        image_array = 255.0 - image_array
+        image_array = image_array / 255.0
+        image_vector = image_array.reshape(784, 1)
         
-        print("Preprocessing complete, making prediction...")
+        print("Image preprocessing completed")
 
         # Make prediction
         prediction = make_prediction(image_vector)
-        print(f"Prediction: {prediction}")
+        print(f"Prediction successful: {prediction}")
 
         return jsonify({'prediction': int(prediction)})
 
     except Exception as e:
-        print(f"PREDICTION ERROR: {str(e)}")
+        print(f"ERROR in prediction: {str(e)}")
+        print("Full traceback:")
         traceback.print_exc()
         return jsonify({'error': f'prediction failed: {str(e)}'}), 500
 
-# For local testing
-if __name__ == '__main__':
-    print("Starting AI service on http://127.0.0.1:5000")
-    app.run(debug=True, port=5000)
+# Vercel entry point
+def handler(request):
+    return app(request.environ, lambda *args: None)
