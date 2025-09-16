@@ -1,8 +1,11 @@
 # prediction.py
+import os
 import numpy as np
 
-# Load the parameters from the file
-params = np.load('model_parameters.npz')
+# Load the parameters from the file using an absolute path
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+_model_path = os.path.join(_this_dir, 'model_parameters.npz')
+params = np.load(_model_path)
 W1 = params['W1']
 b1 = params['b1']
 W2 = params['W2']
@@ -31,6 +34,7 @@ def make_prediction(image_data):
     # The image_data will be a flattened 784x1 numpy array from our server
     # Run it through the network
     A2 = forward_propagation(W1, b1, W2, b2, image_data)
-    # Get the prediction
-    prediction = get_predictions(A2)
-    return prediction
+    # Get the prediction and return as a native int
+    prediction_array = get_predictions(A2)
+    # prediction_array is shape (1,), convert safely to int
+    return int(np.asarray(prediction_array).item())
