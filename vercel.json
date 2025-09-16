@@ -1,47 +1,38 @@
 {
     "version": 2,
     "builds": [
-        {
-            "src": "Backend/app.js",
-            "use": "@vercel/node"
-        },
-        {
-            "src": "AI/app.py",
-            "use": "@vercel/python",
-            "config": {
-                "maxLambdaSize": "50mb"
-            }
-        },
-        {
-            "src": "Frontend/package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "dist",
-                "buildCommand": "npm run build"
-            }
+      {
+        "src": "Backend/app.js",
+        "use": "@vercel/node"
+      },
+      {
+        "src": "ai/app.py",
+        "use": "@vercel/python"
+      },
+      {
+        "src": "Frontend/package.json",
+        "use": "@vercel/static-build",
+        "config": {
+          "distDir": "Frontend/dist"
         }
+      }
     ],
     "routes": [
-        {
-            "src": "/api/ai/(.*)",
-            "dest": "AI/app.py"
-        },
-        {
-            "src": "/api/(.*)",
-            "dest": "Backend/app.js"
-        },
-        { "handle": "filesystem" },
-        {
-            "src": "/assets/(.*)",
-            "dest": "/Frontend/assets/$1"
-        },
-        {
-            "src": "/vite.svg",
-            "dest": "/Frontend/vite.svg"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/Frontend/index.html"
-        }
+      {
+        "src": "/api/test-python",
+        "dest": "Backend/app.js"
+      },
+      {
+        "src": "/api/predict",
+        "dest": "Backend/app.js"
+      },
+      {
+        "src": "/api/ai/.*",
+        "dest": "ai/app.py"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/index.html"
+      }
     ]
-}
+  }

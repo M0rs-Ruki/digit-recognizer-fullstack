@@ -133,6 +133,32 @@ const handlePredict = async (req, res) => {
 
 app.post('/api/predict', upload.single('file'), handlePredict);
 
+app.get('/api/test-python', async (req, res) => {
+    log("=== Python Test Request Started ===");
+    try {
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers['host'];
+        const pythonHealthUrl = `${protocol}://${host}/api/ai`;
+
+        log(`Calling Python health check at: ${pythonHealthUrl}`);
+        
+        const response = await axios.get(pythonHealthUrl);
+        
+        log("Python health check response:", response.data);
+        res.status(200).json({
+            message: "Successfully called Python health check.",
+            pythonResponse: response.data
+        });
+
+    } catch (error) {
+        log("ERROR during Python health check:", error.message);
+        res.status(500).json({
+            error: "Failed to call Python health check.",
+            details: error.message
+        });
+    }
+});
+
 app.listen(port, () => {
     log(`Backend server running on port ${port}`);
 });
