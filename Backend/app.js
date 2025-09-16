@@ -23,8 +23,8 @@ app.get('/api', (req, res) => {
     res.send('Hello from the Node.js proxy server.');
 });
 
-// The Vercel route will be /api/predict as defined in vercel.json
-app.post('/api/predict', upload.single('file'), async (req, res) => {
+// Support both local dev route '/api/predict' and Vercel function root '/'
+const handlePredict = async (req, res) => {
     log("Received a request on /api/predict");
 
     if (!req.file) {
@@ -37,18 +37,20 @@ app.post('/api/predict', upload.single('file'), async (req, res) => {
 
         log("Forwarding request to Python AI service...");
 
-        // FIX 1: Use Environment Variable for the Python API URL
-        // For local development, fallback to localhost:5000
-        // For Vercel, this will be set in your project settings.
+        // Compute Python API URL
+        // - Production/Vercel: call the relative serverless route
+        // - Local dev: use env PYTHON_API_URL or fallback to localhost
+        const isProd = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
         const pythonBaseUrl = process.env.PYTHON_API_URL || 'http://127.0.0.1:5000';
-        const pythonApiUrl = `${pythonBaseUrl}/api/ai/predict`;
+        const pythonApiUrl = isProd ? '/api/ai/predict' : `${pythonBaseUrl}/api/ai/predict`;
         
         log("Calling Python AI service at:", pythonApiUrl);
 
         const response = await axios.post(pythonApiUrl, formData, {
             headers: {
                 ...formData.getHeaders()
-            }
+            },
+            maxBodyLength: Infinity
         });
 
         log("Received response from Python service:", response.data);
@@ -62,7 +64,10 @@ app.post('/api/predict', upload.single('file'), async (req, res) => {
         log("Error calling Python service:", error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Failed to get prediction from AI service.' });
     }
-});
+};
+
+app.post('/api/predict', upload.single('file'), handlePredict);
+app.post('/', upload.single('file'), handlePredict);
 
 // VERCEL NOTE: Vercel ignores this 'app.listen' block. It handles starting
 // the server itself. This is only for running locally.

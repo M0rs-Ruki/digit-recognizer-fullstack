@@ -23,6 +23,10 @@
             "dest": "Backend/app.js"
         },
         {
+            "src": "/api",
+            "dest": "Backend/app.js"
+        },
+        {
             "src": "/api/ai/(.*)",
             "dest": "ai/app.py"
         },

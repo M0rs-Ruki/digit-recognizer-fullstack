@@ -57,10 +57,12 @@ function App() {
     formData.append('file', data.digitImage[0]);
 
     try {
-      // --- LOCAL DEVELOPMENT: Use full URL to backend ---
-      // For local development, your backend runs on port 3000
-      // For Vercel deployment, this should be '/api/predict'
-      const backendUrl = process.env.NODE_ENV === 'production' ? '/api/predict' : 'http://localhost:3000/api/predict';
+      // Choose API endpoint based on environment
+      // - Production (Vercel): use serverless route '/api/predict'
+      // - Local development: call Node backend at http://localhost:3000/api/predict
+      const backendUrl = process.env.NODE_ENV === 'production'
+        ? '/api/predict'
+        : 'http://localhost:3000/api/predict';
       const response = await fetch(backendUrl, {
         method: 'POST',
         body: formData,
