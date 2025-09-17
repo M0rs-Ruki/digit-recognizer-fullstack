@@ -33,8 +33,8 @@ def predict():
         image = image.convert('L')
         image = image.resize((28, 28))
         image_array = np.array(image)
-        image_array = 255.0 - image_array # Invert colors
-        image_array = image_array / 255.0 # Normalize
+        image_array = 255.0 - image_array
+        image_array = image_array / 255.0 
         image_vector = image_array.reshape(784, 1)
 
         # --- Make Prediction ---
@@ -47,7 +47,6 @@ def predict():
             return jsonify({'error': 'model failed to return a prediction'}), 500
         
         # --- THIS IS THE CRITICAL FIX ---
-        # Ensure the key is exactly "prediction" to match the frontend.
         final_prediction = int(prediction_result)
         response_data = {'prediction': final_prediction}
         

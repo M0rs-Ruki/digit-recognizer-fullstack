@@ -3,14 +3,11 @@ import numpy as np
 
 # --- Robust Model Loading with Error Handling ---
 try:
-    # Get the absolute path to the directory containing this script
     _this_dir = os.path.dirname(os.path.abspath(__file__))
-    # Construct the full path to the model file
     _model_path = os.path.join(_this_dir, 'model_parameters.npz')
 
     print(f"PYTHON: Attempting to load model from: {_model_path}")
 
-    # Check if the file actually exists before trying to load it
     if not os.path.exists(_model_path):
         raise FileNotFoundError(f"CRITICAL ERROR: Model file not found at path: {_model_path}")
 
@@ -23,7 +20,6 @@ try:
 
 except Exception as e:
     print(f"PYTHON ✗: CRITICAL ERROR while loading model: {e}")
-    # Re-raise the exception to ensure the application fails clearly
     raise e
 # --- End of Model Loading ---
 
@@ -49,5 +45,4 @@ def make_prediction(image_data):
     A2 = forward_propagation(W1, b1, W2, b2, image_data)
     prediction_array = get_predictions(A2)
     
-    # Convert numpy int to a standard Python int
     return int(prediction_array.item())

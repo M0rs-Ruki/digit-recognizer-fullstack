@@ -91,7 +91,7 @@ const handlePredict = async (req, res) => {
             },
             maxBodyLength: Infinity,
             timeout: 30000,
-            validateStatus: (status) => status < 500 // Don't throw on 4xx errors
+            validateStatus: (status) => status < 500 
         });
 
         const duration = Date.now() - startTime;
